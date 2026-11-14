@@ -83,3 +83,68 @@ Custom, 8-register CPU with multi-cycle instruction timing, and register arrays 
 | 13 | BNZ addr5 | if not zero flag, PC = addr5 | no |
 | 14 | IN wr_loc | wr_loc = switches | no |
 | 15 | OUT r_a | show r_a on LEDs | no |
+
+## Control FSM
+![Control FSM](docs/FSMmodel.png)
+
+### Port Table
+
+| Module | Port | Direction | Width | Description |
+|---|---|---|---|---|
+| Control FSM | `Clk`, `Reset`, `En` | IN | 1 | shared clock, reset, enable |
+| | `opcode` | IN | 4 | instruction opcode, `ir[15:12]` |
+| | `zero_flag` | IN | 1 | stored zero flag from the most recent ALU instruction |
+| | `state` | OUT | 2 | current state, to the VGA debugger |
+| | `ir_load` | OUT | 1 | 1 = load `ROM[pc]` into IR |
+| | `pc_inc` | OUT | 1 | to Program Counter |
+| | `pc_load` | OUT | 1 | to Program Counter |
+| | `wr_en` | OUT | 1 | to Register File |
+| | `wb_sel` | OUT | 2 | selects `wr_data` source (see below) |
+| | `alu_op` | OUT | 3 | to ALU, always `opcode - 1` |
+| | `zero_load` | OUT | 1 | 1 = save ALU `zero` into the zero flag register |
+| | `ram_wr_en` | OUT | 1 | 1 = `RAM[r_a] = r_b` |
+| | `out_load` | OUT | 1 | 1 = LED register gets `r_a` |
+
+### States
+
+| State | Name | Outputs | Purpose |
+|---|---|---|---|
+| 0 | FETCH | `ir_load`, `pc_inc` | IR = ROM[pc], pc = pc + 1 |
+| 1 | DECODE | none | IR fields settle, register file and ALU outputs settle |
+| 2 | EXECUTE | `pc_load` (jumps only) | JMP, BZ, BNZ update the PC |
+| 3 | WRITE | depends on opcode | result is saved to a register, RAM, zero flag or LEDs |
+
+- State moves to the next one (3 wraps to 0) on the clock edge if `En` = 1, otherwise it holds.
+- `Reset` = 1 returns to FETCH from any state.
+
+### Outputs by Opcode
+
+Outputs not listed are 0.
+
+| Op | Name | EXECUTE | WRITE |
+|---|---|---|---|
+| 0 | NOP | none | none |
+| 1–7 | ADD, SUB, AND, OR, XOR, SHL, SHR | none | `wr_en`, `wb_sel` = 0, `zero_load` |
+| 8 | LDI | none | `wr_en`, `wb_sel` = 1 |
+| 9 | LD | none | `wr_en`, `wb_sel` = 2 |
+| 10 | ST | none | `ram_wr_en` |
+| 11 | JMP | `pc_load` | none |
+| 12 | BZ | `pc_load` = `zero_flag` | none |
+| 13 | BNZ | `pc_load` = `~zero_flag` | none |
+| 14 | IN | none | `wr_en`, `wb_sel` = 3 |
+| 15 | OUT | none | `out_load` |
+
+### Write-back Select
+
+| wb_sel | wr_data source | Used by |
+|---|---|---|
+| 0 | ALU `result` | ADD to SHR |
+| 1 | `ir[7:0]` (imm8) | LDI |
+| 2 | `RAM[r_a]` | LD |
+| 3 | `SW[7:0]` | IN |
+
+### Notes
+
+- FSM outputs are combinational. Every module they drive (IR, PC, Register File, RAM, zero flag register, LED register) must only update when `En` = 1.
+- BZ and BNZ test the stored `zero_flag`, not the ALU's live `zero` output.
+- There is no HALT instruction. Use `JMP` to its own address to stop.
