@@ -85,7 +85,7 @@ Custom, 8-register CPU with multi-cycle instruction timing, and register arrays 
 | 15 | OUT r_a | show r_a on LEDs | no |
 
 ## Control FSM
-![Control FSM](docs/FSMmodel.png)
+![Control FSM](FSMmodel.png)
 
 ### Port Table
 
