@@ -31,6 +31,12 @@ Custom, 8-register CPU with multi-cycle instruction timing, and register arrays 
 | | `state` | IN | 2 | FSM state |
 | | `zero_flag` | IN | 1 | most recent zero flag |
 | | `VGA` | OUT | varies | outputs feeding display adapter |
+| Pseudo-ROM | `pc` | IN | 5 | address of the instruction to read |
+| | `instr` | OUT | 16 | instruction stored at `pc` |
+| Instruction Register | `Clk`, `Reset`, `En` | IN | 1 | shared clock, reset, enable |
+| | `ir_load` | IN | 1 | 1 = load `instr` into the IR |
+| | `instr` | IN | 16 | instruction from the pseudo-ROM |
+| | `ir` | OUT | 16 | instruction being executed |
 
 ## Conventions
 
@@ -83,6 +89,20 @@ Custom, 8-register CPU with multi-cycle instruction timing, and register arrays 
 | 13 | BNZ addr5 | if not zero flag, PC = addr5 | no |
 | 14 | IN wr_loc | wr_loc = switches | no |
 | 15 | OUT r_a | show r_a on LEDs | no |
+
+## Demo Program: Counter
+
+Counts up in R1 and shows it on the LEDs.
+
+| Addr | Assembly | Binary (opcode, fields) | Hex |
+|---|---|---|---|
+| 0 | `LDI R1, 0` | `1000 001 0 00000000` | `0x8200` |
+| 1 | `LDI R2, 1` | `1000 010 0 00000001` | `0x8401` |
+| 2 | `ADD R1, R1, R2` | `0001 001 001 010 000` | `0x1250` |
+| 3 | `OUT R1` | `1111 000 001 000 000` | `0xF040` |
+| 4 | `JMP 2` | `1011 0000000 00010` | `0xB002` |
+
+Unused addresses hold `0x0000` (NOP).
 
 ## Control FSM
 ![Control FSM](FSMmodel.png)
@@ -148,3 +168,5 @@ Outputs not listed are 0.
 - FSM outputs are combinational. Every module they drive (IR, PC, Register File, RAM, zero flag register, LED register) must only update when `En` = 1.
 - BZ and BNZ test the stored `zero_flag`, not the ALU's live `zero` output.
 - There is no HALT instruction. Use `JMP` to its own address to stop.
+- `RAM[r_a]` and the LED register use `a` and `b`, the 8-bit register contents, not the 3-bit fields.
+- `Reset` clears the IR to 0, which is NOP.
