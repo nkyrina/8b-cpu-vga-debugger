@@ -33,13 +33,13 @@ module control_fsm (
     output reg        out_load    // LED register <= r_a
 );
 
-    // ---------------- States ----------------
+    // States
     localparam S_FETCH   = 2'd0, // 1
                S_DECODE  = 2'd1, // 2
                S_EXECUTE = 2'd2, // 3
                S_WRITE   = 2'd3; // 4
 
-    // ---------------- Opcodes ----------------
+    // OpCodes
     // assign names to all opcodes (see README)
     localparam OP_NOP = 4'd0, 
                OP_ADD = 4'd1,
@@ -58,14 +58,14 @@ module control_fsm (
                OP_IN  = 4'd14,
                OP_OUT = 4'd15;
 
-    // ---------------- Write-back mux select ----------------
+    // Writeback Mux Select
     // This is a mux that selects what result to be saved to register.
     localparam WB_ALU = 2'd0,   // ALU result
                WB_IMM = 2'd1,   // ir[7:0]
                WB_RAM = 2'd2,   // RAM[r_a]
                WB_SW  = 2'd3;   // SW[7:0]
 
-    // ---------------- State register ----------------
+    // State Register
     // FSM Memory
     reg [1:0] next_state;
 
@@ -75,7 +75,7 @@ module control_fsm (
         else if (En)
             state <= next_state; // Move to next state if Reset is off
     end
-    // ---------------- Next State Logic --------------
+    // Next state logic
     // Combinational; not clocked.
     always @(*) begin
         // moves states in circle (see README)
@@ -91,7 +91,7 @@ module control_fsm (
     // ALU instructions are opcodes 1 to 7
     wire is_alu = (opcode >= OP_ADD) && (opcode <= OP_SHR);
 
-    // ---------------- Output logic ----------------
+    // Output logic
     always @(*) begin
         // defaults: do nothing
         ir_load   = 1'b0;
