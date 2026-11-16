@@ -24,7 +24,7 @@ module step_control #(
     output reg  En        // one-cycle step pulse
 );
 
-    // ---------------- Synchronize the inputs ----------------
+    // Sync the inputs
     // Buttons and switches are not in sync with Clk
     // Passing them through two flip-flops prevents glitches
     reg [1:0] step_sync;
@@ -48,7 +48,7 @@ module step_control #(
     wire step_now = step_sync[1];
     wire run_now  = run_sync[1];
 
-    // ---------------- Edge detection (step mode) ----------------
+    // Edge detection (step mode)
     // step_prev holds the button value from the last clock cycle.
     // A press is when it was 0 last cycle and is 1 now.
 
@@ -65,7 +65,7 @@ module step_control #(
     // on ONLY if now is 1, prev. is 0: prevents holding
     wire step_pulse = step_now & ~step_prev; 
 
-    // ---------------- Slow counter (run mode) ----------------
+    // Slow counter (run mode)
     // Counts 0, 1, ..., RUN_DIV - 1, then wraps.
     // run_tick is 1 for the one cycle when the count wraps.
     reg [31:0] count;
@@ -82,7 +82,7 @@ module step_control #(
     // ticks when the counter is at its last value ONLY in run mode
     wire run_tick = run_now && (count == RUN_DIV - 1);
 
-    // ---------------- Output ----------------
+    // Output
     // En is registered so it is a clean one-cycle pulse.
     always @(posedge Clk) begin
         if (Reset)
