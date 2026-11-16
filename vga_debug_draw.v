@@ -36,8 +36,9 @@ module vga_debug_draw (
                YELLOW = 3'b110,
                WHITE  = 3'b111;
 
-    // ---------------- Pixel counters ----------------
-    // Sweep every pixel: left to right, then top to bottom while program running
+    // pixel counters
+    // sweep left to right, then top to bottom
+    // while running
     reg [8:0] px;   // 0 to 319
     reg [7:0] py;   // 0 to 239
 
@@ -67,7 +68,7 @@ module vga_debug_draw (
     wire [7:0] reg_l = dis_regs[8*line +: 8];        // R0 to R3
     wire [7:0] reg_r = dis_regs[8*(line + 4) +: 8];  // R4 to R7
 
-    // ---------------- Layout: which digit goes in this cell ----------------
+    // layout: what digit goes in this cell
     reg       show;    // 1 = this cell has a digit
     reg [3:0] digit;   // which digit
     reg [2:0] fg;      // its color
