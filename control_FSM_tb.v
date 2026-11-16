@@ -1,9 +1,18 @@
-// simplified testbench for control_fsm.
-// runs 7 instructions through all 4 states and prints the outputs.
-// check waveform against expected behavior in these comments
+// simple testbench for the control fsm model
+// drives inputs and we check for outputs in modelsim
+//
+// expected in the waveform:
+//   state 0 FETCH:   ir_load = 1, pc_inc = 1        (every instruction)
+//   state 1 DECODE:  all outputs 0                  (every instruction)
+//   state 2 EXECUTE: pc_load = 1 for JMP, and for BZ when zero_flag = 1
+//   state 3 WRITE:   ADD -> wr_en = 1, wb_sel = 0, zero_load = 1
+//                    LDI -> wr_en = 1, wb_sel = 1
+//                    ST  -> ram_wr_en = 1
+//                    OUT -> out_load = 1
+
 `timescale 1ns/1ps
 
-module control_fsm_tb; // set unit of time for simulation 
+module control_fsm_tb;
 
     // Inputs to the FSM
     reg        Clk = 0;
@@ -18,7 +27,7 @@ module control_fsm_tb; // set unit of time for simulation
     wire [1:0] wb_sel;
     wire [2:0] alu_op;
 
-    control_fsm testing (
+    control_fsm dut (
         .Clk(Clk), .Reset(Reset), .En(En),
         .opcode(opcode), .zero_flag(zero_flag),
         .state(state),
@@ -28,38 +37,24 @@ module control_fsm_tb; // set unit of time for simulation
     );
 
     // 50 MHz clock: period 20 ns
-    // wait 10ns then flip clock (0->1->0) every 10ns
     always #10 Clk = ~Clk;
 
-    // Print the current state and outputs
-    task show;
-        begin
-            #1;
-            // prints line to transcript with opcode, zero_flag, state, and all outputs
-            $display("op=%2d z=%b | state=%0d | ir_load=%b pc_inc=%b pc_load=%b wr_en=%b wb_sel=%0d zero_load=%b ram_wr_en=%b out_load=%b",
-                     opcode, zero_flag, state, ir_load, pc_inc, pc_load, wr_en, wb_sel, zero_load, ram_wr_en, out_load);
-        end
-    endtask
-
-    // One step: En = 1 for one clock cycle
+    // One step: En = 1 for one clock cycle, then wait one more cycle
     task step;
         begin
             En = 1;
             @(posedge Clk);
             #1 En = 0;
+            @(posedge Clk);
         end
     endtask
 
-    // Run one full instruction (4 steps), printing each state
+    // Run one full instruction: set the opcode, then step through all 4 states
     task run_instr(input [3:0] op, input z);
         begin
             opcode = op;
             zero_flag = z;
-            show; step;   // state 0 FETCH
-            show; step;   // state 1 DECODE
-            show; step;   // state 2 EXECUTE
-            show; step;   // state 3 WRITE
-            $display("");
+            step; step; step; step;
         end
     endtask
 
@@ -68,42 +63,21 @@ module control_fsm_tb; // set unit of time for simulation
         @(posedge Clk); @(posedge Clk);
         #1 Reset = 0;
 
-        // En = 0: state should stay at 0
+        // En = 0 for 3 clocks: state should stay at 0
         repeat (3) @(posedge Clk);
-        $display("After 3 clocks with En = 0, state = %0d (expect 0)\n", state);
 
-        // ADD: expect WRITE -> wr_en=1, wb_sel=0, zero_load=1
-        $display("--- ADD ---");
-        run_instr(4'd1, 0);
+        run_instr(4'd1,  0);   // ADD
+        run_instr(4'd8,  0);   // LDI
+        run_instr(4'd10, 0);   // ST
+        run_instr(4'd15, 0);   // OUT
+        run_instr(4'd11, 0);   // JMP
+        run_instr(4'd12, 1);   // BZ, zero_flag = 1 (jump)
+        run_instr(4'd12, 0);   // BZ, zero_flag = 0 (no jump)
 
-        // LDI: expect WRITE -> wr_en=1, wb_sel=1
-        $display("--- LDI ---");
-        run_instr(4'd8, 0);
-
-        // ST: expect WRITE -> ram_wr_en=1
-        $display("--- ST ---");
-        run_instr(4'd10, 0);
-
-        // OUT: expect WRITE -> out_load=1
-        $display("--- OUT ---");
-        run_instr(4'd15, 0);
-
-        // JMP: expect EXECUTE -> pc_load=1
-        $display("--- JMP ---");
-        run_instr(4'd11, 0);
-
-        // BZ with zero flag = 1: expect EXECUTE -> pc_load=1
-        $display("--- BZ, zero_flag = 1 (jump) ---");
-        run_instr(4'd12, 1);
-
-        // BZ with zero flag = 0: expect pc_load=0 everywhere
-        $display("--- BZ, zero_flag = 0 (no jump) ---");
-        run_instr(4'd12, 0);
-
-        // Reset in the middle: expect state back to 0
+        // Reset in the middle: state should go back to 0
         step; step;
         Reset = 1; @(posedge Clk); #1 Reset = 0;
-        $display("After reset in the middle, state = %0d (expect 0)", state);
+        repeat (3) @(posedge Clk);
 
         $stop;
     end
