@@ -1,4 +1,4 @@
-//Fetch Testbench (Program Counter + Pseudo-ROM + Instruction Register)
+//Datapath Fetch Testbench (Program Counter + Pseudo-ROM + Instruction Register)
 
 //Tests the fetch path of the CPU by connecting three modules together:
 //program_counter --pc--> pseudo_rom --instr--> instr_reg --ir-->
@@ -12,7 +12,7 @@
 
 `timescale 1ns / 1ps
 
-module fetch_tb();
+module datapath_tb();
 
     //Driven by the testbench
     reg [0:0] Clk, Reset, En;
