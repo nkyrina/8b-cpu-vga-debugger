@@ -1,6 +1,6 @@
 //Arithmetic Logic Unit (ALU) for CPU
 
-//Handles eight possible computational cases based on the given op code
+//Handles seven possible operations based on the given op code.
 
 module alu(a, b, op, result, zero);
     input [7:0]a, b;
@@ -13,14 +13,14 @@ module alu(a, b, op, result, zero);
     //Handles the respective op code
     always @(*) begin
         case(op)
-        3'b000: result = a + b;
-        3'b001: result = a - b;
-        3'b010: result = a & b;
-        3'b011: result = a | b;
-        3'b100: result = a ^ b;
-        3'b101: result = a << 1;
-        3'b110: result = a >> 1;
-        default: result = 8'd0;
+        3'b000: result = a + b;     // ADD
+        3'b001: result = a - b;     // SUB
+        3'b010: result = a & b;     // AND
+        3'b011: result = a | b;     // OR
+        3'b100: result = a ^ b;     // XOR
+        3'b101: result = a << 1;    // SHL
+        3'b110: result = a >> 1;    // SHR
+        default: result = 8'd0;     //Default
         endcase
     end
 
