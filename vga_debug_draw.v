@@ -1,11 +1,11 @@
-// vga_debug_draw.v
+
 // Draws the CPU's state on the screen as hex numbers, one pixel per clock cycle.
-//
+
 // Screen: 320 x 240 pixels, 3-bit color {R, G, B}.
 // Digits: 8 x 8 pixels each, so the screen is a 40 x 30 grid of digit cells.
-//
+
 // Layout (text row, text column), no labels, each line has its own color:
-//
+
 //   row 2   col 2-3     PC           (white)
 //   row 4   col 2-5     IR           (white)
 //   row 6   col 2       state 0-3    (green)
@@ -37,7 +37,7 @@ module vga_debug_draw (
                WHITE  = 3'b111;
 
     // ---------------- Pixel counters ----------------
-    // Sweep every pixel: left to right, then top to bottom, forever.
+    // Sweep every pixel: left to right, then top to bottom while program running
     reg [8:0] px;   // 0 to 319
     reg [7:0] py;   // 0 to 239
 
@@ -55,7 +55,7 @@ module vga_debug_draw (
         end
     end
 
-    // ---------------- Which cell, which pixel ----------------
+    // Which cell, which pixel
     wire [4:0] cr = py[7:3];   // cell row,    0 to 29   (y / 8)
     wire [5:0] cc = px[8:3];   // cell column, 0 to 39   (x / 8)
     wire [2:0] fr = py[2:0];   // pixel row inside the digit    (y mod 8)
