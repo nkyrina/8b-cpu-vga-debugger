@@ -98,4 +98,48 @@ module vga_debug_draw (
             if (cc == 6'd2) begin show = 1'b1; digit = {2'b00, state}; end
         end
 
-        // Zero flag
+        // Zero flag      
+        else if (cr == 5'd8) begin
+            fg = GREEN;
+            if (cc == 6'd2) begin show = 1'b1; digit = {3'b000, zero_flag}; end
+        end
+
+        // Registers: rows 11, 13, 15, 17
+        else if (cr >= 5'd11 && cr <= 5'd17 && cr[0] == 1'b1) begin
+            fg = YELLOW;
+            if (cc == 6'd2) begin show = 1'b1; digit = reg_l[7:4]; end
+            if (cc == 6'd3) begin show = 1'b1; digit = reg_l[3:0]; end
+            if (cc == 6'd7) begin show = 1'b1; digit = reg_r[7:4]; end
+            if (cc == 6'd8) begin show = 1'b1; digit = reg_r[3:0]; end
+        end
+    end
+
+    // ---------------- Font lookup ----------------
+    wire [7:0] font_bits;
+
+    font_rom font (
+        .digit(digit),
+        .row(fr),
+        .bits(font_bits)
+    );
+
+    // bit 7 is the leftmost pixel
+    wire pixel_on = show & font_bits[3'd7 - fc];
+
+    // ---------------- Output to the VGA adapter ----------------
+    always @(posedge Clk) begin
+        if (Reset) begin
+            x     <= 9'd0;
+            y     <= 8'd0;
+            color <= BLACK;
+            write <= 1'b0;
+        end
+        else begin
+            x     <= px;
+            y     <= py;
+            color <= pixel_on ? fg : BLACK;
+            write <= 1'b1;
+        end
+    end
+
+endmodule
