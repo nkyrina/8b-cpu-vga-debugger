@@ -1,10 +1,6 @@
 //Arithmetic Logic Unit (ALU) Testbench
 
-<<<<<<< Updated upstream
 //Tests the ALU by driving each operation and several edge cases
-=======
-//Tests the ALU through case simulation: drive the inputs and relay the outputs
->>>>>>> Stashed changes
 
 `timescale 1ns/ 1ps
 
