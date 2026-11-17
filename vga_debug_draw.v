@@ -19,14 +19,14 @@ module vga_debug_draw (
     input  wire        Clk,
     input  wire        Reset,       // active high, synchronous
     input  wire [4:0]  pc,
-    input  wire [63:0] dis_regs,    // R0 = [7:0], ..., R7 = [63:56]
-    input  wire [15:0] ir,
-    input  wire [1:0]  state,
-    input  wire        zero_flag,
+    input  wire [63:0] dis_regs,    // 8 Registers: R0 = [7:0], ..., R7 = [63:56]
+    input  wire [15:0] ir,          // 16-bit ir
+    input  wire [1:0]  state,       // 2 bit state
+    input  wire        zero_flag,    
 
-    output reg  [8:0]  x,           // to vga_adapter
-    output reg  [7:0]  y,
-    output reg  [2:0]  color,
+    output reg  [8:0]  x,           // to vga_adapter (9 bits -> 512 > 319)
+    output reg  [7:0]  y,           // 8 bits (8 bits -> 256 > 239 )
+    output reg  [2:0]  color,       // R, G, B
     output reg         write
 );
 
@@ -43,13 +43,13 @@ module vga_debug_draw (
     reg [7:0] py;   // 0 to 239
 
     always @(posedge Clk) begin
-        if (Reset) begin
+        if (Reset) begin // On every reset, return to top-left corner
             px <= 9'd0;
             py <= 8'd0;
         end
         else if (px == 9'd319) begin
             px <= 9'd0;
-            py <= (py == 8'd239) ? 8'd0 : py + 8'd1;
+            py <= (py == 8'd239) ? 8'd0 : py + 8'd1; // if last row, go back to 0 else go down one
         end
         else begin
             px <= px + 9'd1;
@@ -63,10 +63,10 @@ module vga_debug_draw (
     wire [2:0] fc = px[2:0];   // pixel column inside the digit (x mod 8)
 
     // Register lines are rows 11, 13, 15, 17 -> line 0, 1, 2, 3
-    wire [4:0] rr    = cr - 5'd11;
-    wire [1:0] line  = rr[2:1];
-    wire [7:0] reg_l = dis_regs[8*line +: 8];        // R0 to R3
-    wire [7:0] reg_r = dis_regs[8*(line + 4) +: 8];  // R4 to R7
+    wire [4:0] rr    = cr - 5'd11; // Shift row numbers for first register row is 0
+    wire [1:0] line  = rr[2:1]; // divide by 2 (drop lowest bit)
+    wire [7:0] reg_l = dis_regs[8*line +: 8];        // LEFT: R0 to R3: 8 bits, starting at bit line
+    wire [7:0] reg_r = dis_regs[8*(line + 4) +: 8];  // RIGHT: R4 to R7, starting at bit 8 x line+4
 
     // layout: what digit goes in this cell
     reg       show;    // 1 = this cell has a digit
@@ -78,27 +78,28 @@ module vga_debug_draw (
         digit = 4'h0;
         fg    = WHITE;
 
-        // PC
+        // PC: ROW 2
         if (cr == 5'd2) begin
-            if (cc == 6'd2) begin show = 1'b1; digit = {3'b000, pc[4]}; end
-            if (cc == 6'd3) begin show = 1'b1; digit = pc[3:0]; end
+            if (cc == 6'd2) begin show = 1'b1; digit = {3'b000, pc[4]}; end // Cell (2,2) Shows top bit of PC
+            if (cc == 6'd3) begin show = 1'b1; digit = pc[3:0]; end // Cell (2,3) Shows bottom 4 bits of PC
         end
 
-        // IR
+        // IR: ROW 4
+        // Shows the opcode in nibbles e.g, 0001 0110 0101 000
         else if (cr == 5'd4) begin
-            if (cc == 6'd2) begin show = 1'b1; digit = ir[15:12]; end
+            if (cc == 6'd2) begin show = 1'b1; digit = ir[15:12]; end 
             if (cc == 6'd3) begin show = 1'b1; digit = ir[11:8];  end
             if (cc == 6'd4) begin show = 1'b1; digit = ir[7:4];   end
             if (cc == 6'd5) begin show = 1'b1; digit = ir[3:0];   end
         end
 
-        // State
+        // State: ROW 6
         else if (cr == 5'd6) begin
             fg = GREEN;
             if (cc == 6'd2) begin show = 1'b1; digit = {2'b00, state}; end
         end
 
-        // Zero flag      
+        // Zero flag: ROW 8    
         else if (cr == 5'd8) begin
             fg = GREEN;
             if (cc == 6'd2) begin show = 1'b1; digit = {3'b000, zero_flag}; end
@@ -114,7 +115,8 @@ module vga_debug_draw (
         end
     end
 
-    // ---------------- Font lookup ----------------
+    // Font lookup
+    // asks font ROM what row fr looks like for this digit
     wire [7:0] font_bits;
 
     font_rom font (
@@ -126,7 +128,8 @@ module vga_debug_draw (
     // bit 7 is the leftmost pixel
     wire pixel_on = show & font_bits[3'd7 - fc];
 
-    // ---------------- Output to the VGA adapter ----------------
+    // Output to VGA
+    // every clock sends adapter where we are, the color, write = 1 (save it)
     always @(posedge Clk) begin
         if (Reset) begin
             x     <= 9'd0;
