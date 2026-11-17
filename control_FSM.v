@@ -128,7 +128,7 @@ module control_fsm (
 
             S_WRITE: begin
                 // Save ALU answer to register and update zero flag.
-                if (is_alu) begin
+                if (is_alu) begin // op codes 1-7
                     wr_en     = 1'b1;
                     wb_sel    = WB_ALU;
                     zero_load = 1'b1;
