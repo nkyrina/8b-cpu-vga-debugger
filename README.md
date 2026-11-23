@@ -37,6 +37,25 @@ Custom, 8-register CPU with multi-cycle instruction timing, and register arrays 
 | | `ir_load` | IN | 1 | 1 = load `instr` into the IR |
 | | `instr` | IN | 16 | instruction from the pseudo-ROM |
 | | `ir` | OUT | 16 | instruction being executed |
+| Zero Flag Register | `Clk`, `Reset`, `En` | IN | connects to CLOCK_50, Reset, En |
+| | `zero_load` | IN | 1 | FSM's zero_load |
+| | `zero` | IN | 1 | connects to alu_zero |
+| | `zero_flag | OUT | 1 | connects to zero_flag |
+| Write-back Mux | `wb_sel` | IN | 2 | selects the source of `wr_data` |
+| | `alu_result` | IN | 8 | result from the ALU, `wb_sel` = 0 |
+| | `imm8` | IN | 8 | constant from `ir[7:0]`, `wb_sel` = 1 |
+| | `ram_data` | IN | 8 | value read from RAM, `wb_sel` = 2 |
+| | `sw_in` | IN | 8 | switches `SW[7:0]`, `wb_sel` = 3 |
+| | `wr_data` | OUT | 8 | value written to the register file |
+| Zero Flag Register | `Clk`, `Reset`, `En` | IN | 1 | shared clock, reset, enable |
+| | `zero_load` | IN | 1 | 1 = store the ALU's `zero` |
+| | `zero` | IN | 1 | live zero output from the ALU |
+| | `zero_flag` | OUT | 1 | stored flag, tested by BZ and BNZ |
+| Output Register | `Clk`, `Reset`, `En` | IN | 1 | shared clock, reset, enable |
+| | `out_load` | IN | 1 | 1 = store `out_data` |
+| | `out_data` | IN | 8 | value of `r_a`, from the register file's `a` |
+| | `leds` | OUT | 8 | value shown on `LEDR[7:0]` |
+
 
 ## Conventions
 

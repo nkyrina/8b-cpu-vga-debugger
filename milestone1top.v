@@ -1,19 +1,22 @@
-//
+`default_nettype none
+
+//Top Level: 8-bit CPU with Live VGA Debugger
+
+//Connects the CPU datapath, the control FSM, the step control, and the VGA
+//debugger to the DE1-SoC board. The CPU runs the program stored in the
+//pseudo-ROM, one FSM state per step.
 
 // Board controls:
-//   KEY[0]   reset (back to FETCH)
-//   KEY[1]   step (one press = one state)
+//   KEY[0]   reset (PC, IR, registers and flags clear; FSM returns to FETCH)
+//   KEY[1]   step (one press = one FSM state)
 //   SW[9]    run mode (1 = step automatically, 0 = use KEY[1])
-//   SW[3:0]  fake opcode   (stands in for ir[15:12])
-//   SW[4]    fake zero flag
-//
-// LEDs show the FSM's control signals:
-//   LEDR[0] ir_load    LEDR[1] pc_inc     LEDR[2] pc_load
-//   LEDR[3] wr_en      LEDR[4] zero_load  LEDR[5] ram_wr_en
-//   LEDR[6] out_load   LEDR[7] En (flashes on each step)
-//   LEDR[9:8] state
-//
-// VGA shows: PC = 00, IR = opcode from SW[3:0], state, zero flag = SW[4], registers = 00.
+//   SW[7:0]  input value for the IN instruction
+
+// LEDs:
+//   LEDR[7:0]  value from the most recent OUT instruction
+//   LEDR[9:8]  current FSM state (0 FETCH, 1 DECODE, 2 EXECUTE, 3 WRITE)
+
+// VGA shows the live CPU state: PC, IR, FSM state, zero flag, and R0 to R7.
 
 module milestone1top (
     input  wire       CLOCK_50,
@@ -37,17 +40,105 @@ module milestone1top (
     wire b_step = ~KEY[1];
     wire m_run  = SW[9];
 
-    // standins
-    // switches -> opcode
-	 // sw4 -> zeroflag
-    wire [3:0]  opcode    = SW[3:0];
-    wire        zero_flag = SW[4];
-    wire [4:0]  pc        = 5'd0;
-    wire [15:0] ir        = {opcode, 12'h000};
-    wire [63:0] dis_regs  = 64'd0;
+    // cpu signals, driven by the referenced module
+    wire [4:0] pc;          // program_counter
+    wire [15:0] instr;      // pseudo_rom
+    wire [15:0] ir;         // instr_reg
+    wire [63:0] dis_regs;   // register_file
+    wire zero_flag;         // zero flag register
+
+    // op code (four bits of instruction from ir)
+    wire [3:0] opcode = ir[15:12];
+
+    wire [7:0] reg_a, reg_b;    // register file -> ALU
+    wire [7:0] alu_result;      // ALU -> write-back mux
+    wire alu_zero;              // ALU -> zero flag register
+    wire [7:0] wr_data;         // write-back mux -> register file
+    wire [7:0] led_out;         // output register -> LEDs
 
     // step control
     wire En;
+    
+    // control fsm
+    wire [1:0] state;
+    wire       ir_load, pc_inc, pc_load, wr_en, zero_load, ram_wr_en, out_load;
+    wire [1:0] wb_sel;
+    wire [2:0] alu_op;
+
+    //module instantiation
+
+    program_counter pc1 (
+        .Clk(CLOCK_50),
+        .Reset(Reset),
+        .En(En),
+        .pc_inc(pc_inc),
+        .pc_load(pc_load),
+        .target(ir[4:0]),
+        .pc(pc)
+    );
+
+    pseudo_rom pr1 (
+        .pc(pc),
+        .instr(instr)
+    );
+
+    instr_reg ir1(
+        .Clk(CLOCK_50),
+        .Reset(Reset),
+        .En(En),
+        .ir_load(ir_load),
+        .instr(instr),
+        .ir(ir)
+    );
+
+    register_file rf1 (
+        .Clk(CLOCK_50),
+        .Reset(Reset),
+        .En(En),
+        .wr_en(wr_en),
+        .wr_loc(ir[11:9]),
+        .r_a(ir[8:6]),
+        .r_b(ir[5:3]),
+        .wr_data(wr_data),
+        .a(reg_a),
+        .b(reg_b),
+        .dis_regs(dis_regs)
+    );
+
+    alu alu1 (
+        .a(reg_a),
+        .b(reg_b),
+        .op(alu_op),
+        .result(alu_result),
+        .zero(alu_zero)
+    );
+
+    zero_flag_reg zfr1 (
+        .Clk(CLOCK_50),
+        .Reset(Reset),
+        .En(En),
+        .zero_load(zero_load),
+        .zero(alu_zero),
+        .zero_flag(zero_flag)
+    );
+    
+    wb_mux wbm1 (
+        .wb_sel(wb_sel),
+        .alu_result(alu_result),
+        .imm8(ir[7:0]),
+        .ram_data(8'd0),            // no RAM yet, so LD loads 0
+        .sw_in(SW[7:0]),
+        .wr_data(wr_data)
+    );
+
+    out_reg out1 (
+        .Clk(CLOCK_50),
+        .Reset(Reset),
+        .En(En),
+        .out_load(out_load),
+        .out_data(reg_a),
+        .leds(led_out)
+    );
 
     step_control sc (
         .Clk(CLOCK_50),
@@ -56,12 +147,6 @@ module milestone1top (
         .m_run(m_run),
         .En(En)
     );
-
-    // control fsm
-    wire [1:0] state;
-    wire       ir_load, pc_inc, pc_load, wr_en, zero_load, ram_wr_en, out_load;
-    wire [1:0] wb_sel;
-    wire [2:0] alu_op;
 
     control_fsm fsm (
         .Clk(CLOCK_50),
@@ -94,15 +179,8 @@ module milestone1top (
             en_blink <= en_blink - 23'd1;
     end
 
-    assign LEDR[0]   = ir_load;
-    assign LEDR[1]   = pc_inc;
-    assign LEDR[2]   = pc_load;
-    assign LEDR[3]   = wr_en;
-    assign LEDR[4]   = zero_load;
-    assign LEDR[5]   = ram_wr_en;
-    assign LEDR[6]   = out_load;
-    assign LEDR[7]   = (en_blink != 23'd0);
-    assign LEDR[9:8] = state;
+    assign LEDR[7:0] = led_out;     // value from the last OUT instruction
+    assign LEDR[9:8] = state;       // current FSM state
 
     // vga debugger
     vga_debug dbg (
@@ -124,3 +202,5 @@ module milestone1top (
     );
 
 endmodule
+
+`default_nettype wire
