@@ -1,7 +1,7 @@
 
 // Draws the CPU's state on the screen as hex numbers, one pixel per clock cycle.
 
-// Screen: 320 x 240 pixels, 3-bit color {R, G, B}.
+// Screen: 320 x 240 pixels, 9-bit color {RRR, GGG, BBB}.
 // Digits: 8 x 8 pixels each, so the screen is a 40 x 30 grid of digit cells.
 
 // Layout (text row, text column), no labels, each line has its own color:
@@ -85,7 +85,7 @@ module vga_debug_draw (
         end
 
         // IR: ROW 4
-        // Shows the opcode in nibbles e.g, 0001 0110 0101 000
+        // Shows the IR in 4 hex digits, e.g. 0001 0110 0101 0000 = 1650
         else if (cr == 5'd4) begin
             if (cc == 6'd2) begin show = 1'b1; digit = ir[15:12]; end 
             if (cc == 6'd3) begin show = 1'b1; digit = ir[11:8];  end
