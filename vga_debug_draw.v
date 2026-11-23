@@ -26,15 +26,15 @@ module vga_debug_draw (
 
     output reg  [8:0]  x,           // to vga_adapter (9 bits -> 512 > 319)
     output reg  [7:0]  y,           // 8 bits (8 bits -> 256 > 239 )
-    output reg  [2:0]  color,       // R, G, B
+    output reg  [8:0]  color,       // R, G, B
     output reg         write
 );
 
     // Colors {R, G, B}
-    localparam BLACK  = 3'b000,
-               GREEN  = 3'b010,
-               YELLOW = 3'b110,
-               WHITE  = 3'b111;
+    localparam BLACK  = 9'b000_000_000,
+               GREEN  = 9'b000_111_000,
+               YELLOW = 9'b111_111_000,
+               WHITE  = 9'b111_111_111;
 
     // pixel counters
     // sweep left to right, then top to bottom
@@ -71,7 +71,7 @@ module vga_debug_draw (
     // layout: what digit goes in this cell
     reg       show;    // 1 = this cell has a digit
     reg [3:0] digit;   // which digit
-    reg [2:0] fg;      // its color
+    reg [8:0] fg;      // its color
 
     always @(*) begin
         show  = 1'b0;
