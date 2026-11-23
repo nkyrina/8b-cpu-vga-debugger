@@ -18,7 +18,7 @@
 
 // VGA shows the live CPU state: PC, IR, FSM state, zero flag, and R0 to R7.
 
-module milestone1top (
+module top (
     input  wire       CLOCK_50,
     input  wire [3:0] KEY,
     input  wire [9:0] SW,
