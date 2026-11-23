@@ -1,8 +1,8 @@
-// vga_debug.v
+
 // VGA debugger: shows the CPU's PC, IR, state, zero flag and registers on a monitor.
 // Ports match README display ports 
 
-// Uses the course-provided vga_adapter file at 320 x 240 with 3-bit color
+// Uses the course-provided vga_adapter file at 320 x 240 with 9-bit color
 
 // Needs these files in the Quartus project:
 //   vga_debug_draw.v, font_rom.v
@@ -31,7 +31,7 @@ module vga_debug (
     // 320 x 240 display
     wire [8:0] x; // 9 bits -> 2^9 = 512 > 319
     wire [7:0] y; // 8 bits -> 2^8 = 256 > 239
-    wire [2:0] color; // 1 bit for R, G, B
+    wire [8:0] color; // 3 bits each for R, G, B
     wire       write; // save pixel
 
     vga_debug_draw draw (
@@ -52,7 +52,7 @@ module vga_debug (
     vga_adapter #(
         // change vga adapter parameters from defaults
         .RESOLUTION("320x240"),
-        .COLOR_DEPTH(3),
+        .COLOR_DEPTH(9),
         .BACKGROUND_IMAGE("UNUSED") // black pixels
     ) vga (
         .resetn(~Reset),            // the adapter's reset is active low
