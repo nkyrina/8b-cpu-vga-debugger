@@ -15,7 +15,7 @@ module pseudo_rom(pc, instr);
         case (pc)
             5'd0:  instr = 16'h8208;    // LDI R1, 8        food starts full
             5'd1:  instr = 16'h8408;    // LDI R2, 8        fun starts full
-            z5'd2:  instr = 16'h0000;    // NOP       
+            5'd2:  instr = 16'h0000;    // NOP       
             5'd3:  instr = 16'hF1C0;    // OUT R7           show last score on LEDs
             5'd4:  instr = 16'hEC00;    // IN R6            tick: read switches
             5'd5:  instr = 16'h8A01;    // LDI R5, 1        mask SW[0], constant 1
