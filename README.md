@@ -189,3 +189,6 @@ Outputs not listed are 0.
 - There is no HALT instruction. Use `JMP` to its own address to stop.
 - `RAM[r_a]` and the LED register use `a` and `b`, the 8-bit register contents, not the 3-bit fields.
 - `Reset` clears the IR to 0, which is NOP.
+- Used piskel for illustrations: https://www.piskelapp.com/
+- Used this tool to convert sprite drawings to hex: https://onlinepngtools.com/convert-png-to-hex
+
