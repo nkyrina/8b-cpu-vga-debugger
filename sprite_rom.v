@@ -5,11 +5,11 @@
 //   row by row, left to right, separated by spaces or new lines
 
 
-// One file per sprite, in the Quartus project folder:
+// One file per sprite:
 //   face0.txt happy, face1.txt hungry, face2.txt sad, face3.txt sleeping,
 //   face4.txt game over, face5.txt eating, face6.txt playing
 
-// Pure black (000000) is treated as transparent, turns transparent into pure blac in the VGA output.
+// Pure black (000000) is treated as transparent, turns transparent into pure black in the VGA output.
 
 // The 24-bit colour is cut down to the VGA's 9-bit RRR GGG BBB by keeping the
 // top 3 bits of each colour. The read is clocked (1 cycle delay) so Quartus puts
@@ -26,9 +26,12 @@ module pet_rom (
     localparam TRANSP = 9'b111_000_111;   // what the drawer treats as see-through
 
     reg [23:0] mem [0:7167];    // 7 faces x 1024 pixels, 24-bit RRGGBB
+    // 24 bit color per slot, 7168 slots 
 
     // Load each face into its own block of 1024 pixels
+    // runs once at compile time, so we save to FPGA's block memory
     initial begin
+        // (file, mem, start, end)
         $readmemh("kitty_faces/face0.txt", mem,    0, 1023);   // happy
         $readmemh("kitty_faces/face1.txt", mem, 1024, 2047);   // hungry
         $readmemh("kitty_faces/face2.txt", mem, 2048, 3071);   // sad
@@ -38,11 +41,12 @@ module pet_rom (
         $readmemh("kitty_faces/face6.txt", mem, 6144, 7167);   // playing
     end
 
-    reg [23:0] c;
+    reg [23:0] c; // temporary color read from the ROM, 24-bit RRGGBB
 
     // address = face x 1024 + sy x 32 + sx  (just the bits glued together)
+    // basically, count up through every pixel row by row, face by face, L to R
     always @(posedge Clk) begin
-        c = mem[{face, sy, sx}];
+        c = mem[{face, sy, sx}]; 
         if (c == 24'h000000)
             color <= TRANSP;                            // black = see-through
         else

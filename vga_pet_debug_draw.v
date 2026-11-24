@@ -1,9 +1,8 @@
-// vga_debug_draw.v
 // Draws the CPU's state and the virtual pet, one pixel per clock cycle.
-//
+
 // Screen: 320 x 240 pixels, 9-bit color {RRR, GGG, BBB}.
 // Digits: 8 x 8 pixels each, so the screen is a 40 x 30 grid of digit cells.
-//
+
 // Left side, debug digits (text row, text column):
 //   row 2   col 2-3     PC           (white)
 //   row 4   col 2-5     IR           (white)
@@ -13,17 +12,17 @@
 //   row 13  col 2-3  R1     col 7-8  R5
 //   row 15  col 2-3  R2     col 7-8  R6
 //   row 17  col 2-3  R3     col 7-8  R7
-//
+
 // Right side, virtual pet:
-//   pet sprite  x 200-263, y 32-95   (32 x 32 sprite drawn 2x bigger)
+//   pet sprite  x 200-263, y 32-95   (32 x 32 sprite drawn 2x bigger, 64 x 64)
 //   food bar    x 200-263, y 104-111 (orange, 8 pixels per point of food)
 //   fun bar     x 200-263, y 116-123 (cyan,   8 pixels per point of fun)
-//
+
 // Pet registers (set by the pet program): R1 = food, R2 = fun, R4 = sleep flag,
 // R6 = switches read by IN (bit 0 = feed, bit 1 = play).
 // Face order: game over -> sleeping -> eating -> playing -> hungry -> sad -> happy
 // (first match wins).
-//
+
 // Pipeline: the sprite ROM takes 1 clock to read, so every other signal is delayed
 // by 1 clock to line up with it, then registered once more for the output.
 
@@ -136,6 +135,7 @@ module vga_debug_draw (
     // Color from the text and bars (everything except the sprite)
     reg [8:0] base_color;
     // Pet: mood, sprite position, stat bars
+    // Pet stats are pulled out of registers 
     wire [7:0] food  = dis_regs[15:8];    // R1
     wire [7:0] fun   = dis_regs[23:16];   // R2
     wire [7:0] sleep = dis_regs[39:32];   // R4
@@ -146,6 +146,7 @@ module vga_debug_draw (
     wire game_over   = !not_started && ((food == 8'd0) || (fun == 8'd0));
 
     reg [2:0] face;
+    // if/else if chain picks face, in order of priority 
     always @(*) begin
         if (game_over)            
             face = 3'd4;   // game over
@@ -185,11 +186,11 @@ module vga_debug_draw (
     );
 
     // Stat bars: 8 pixels wide per point, up to 8 points = 64 pixels
-    wire in_bar_x = (px >= PET_X) && (px < PET_X + 9'd64);
-    wire in_food  = in_bar_x && (py >= FOOD_Y) && (py < FOOD_Y + 8'd8);
-    wire in_fun   = in_bar_x && (py >= FUN_Y)  && (py < FUN_Y  + 8'd8);
-    wire food_on  = ({3'b000, dx} < {food, 3'b000});   // dx < food x 8
-    wire fun_on   = ({3'b000, dx} < {fun,  3'b000});   // dx < fun x 8
+    wire in_bar_x = (px >= PET_X) && (px < PET_X + 9'd64); // inside bar columns (x from 200 to 263)
+    wire in_food  = in_bar_x && (py >= FOOD_Y) && (py < FOOD_Y + 8'd8); // inside food rows (104-111)
+    wire in_fun   = in_bar_x && (py >= FUN_Y)  && (py < FUN_Y  + 8'd8); // inside fun rows (116-123)
+    wire food_on  = ({3'b000, dx} < {food, 3'b000});   // dx < food x 8 (e.g. food = 5, dx < 40, first 40 pixels of the bar are orange)
+    wire fun_on   = ({3'b000, dx} < {fun,  3'b000});   // dx < fun x 8 (e.g. fun = 3, dx < 24)
 
     always @(*) begin
     if (in_food) begin
@@ -212,6 +213,8 @@ module vga_debug_draw (
 
     // Pipeline and output
     // Stage 1: wait one clock for the sprite ROM
+    // sprite color arrives from ROM one clock late; we match 
+    // other signals to line up with it, then register everything again for the output.
     reg [8:0] x1;
     reg [7:0] y1;
     reg [8:0] base1;
@@ -225,6 +228,10 @@ module vga_debug_draw (
     end
 
     // Stage 2: pick sprite or background, send to the VGA adapter
+    // x,y, color all travel togeteher, so we can register them together for the output.
+    // sends delayed x and y 
+    // if inside the kitty sprite, and the sprite pixel is not transparent, 
+    // send the sprite color; otherwise send the base color (text or bar).
     always @(posedge Clk) begin
         if (Reset) begin
             x     <= 9'd0;

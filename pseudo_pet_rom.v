@@ -1,4 +1,4 @@
-// Stores the program as fixed 16-bit instructions, selected by the program counter.
+S// Stores the program as fixed 16-bit instructions, selected by the program counter.
 // the contents are constants, so nothing can write to it while the CPU runs.
 
 // Current Program: Virtual Pet (uses all 16 opcodes).
